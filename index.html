@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JT/T 808 & 809 报文解析工具</title>
+<meta name="description" content="在线部标 JT/T 808-2011/2013/2019 与 JT/T 809 协议报文解析工具，纯前端实现，数据不出浏览器。">
+<style>
+:root{
+  --bg:#ffffff;
+  --bg-sub:#fafafa;
+  --bg-hover:#f4f4f5;
+  --border:#e5e5e5;
+  --border-strong:#d4d4d4;
+  --text:#0a0a0a;
+  --text-2:#52525b;
+  --text-3:#8f8f96;
+  --accent:#000000;
+  --ok:#16a34a;
+  --warn:#b45309;
+  --err:#dc2626;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r:8px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0a0a; --bg-sub:#111113; --bg-hover:#1a1a1d;
+    --border:#232326; --border-strong:#333338;
+    --text:#ededed; --text-2:#a1a1aa; --text-3:#6b6b74;
+    --accent:#ffffff; --ok:#4ade80; --warn:#fbbf24; --err:#f87171;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--sans);font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+
+/* ---------- 布局 ---------- */
+.wrap{max-width:1400px;margin:0 auto;padding:0 24px 80px}
+header{
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(12px);z-index:50;
+}
+.hd{max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.01em;font-size:15px}
+.logo .mark{
+  width:24px;height:24px;border:1.5px solid var(--text);border-radius:6px;
+  display:grid;place-items:center;font-size:11px;font-weight:700;font-family:var(--mono)
+}
+.hd .spacer{flex:1}
+.badge{
+  font-family:var(--mono);font-size:11px;color:var(--text-2);
+  border:1px solid var(--border);border-radius:999px;padding:2px 9px;
+}
+.tabs{display:flex;gap:2px;background:var(--bg-sub);border:1px solid var(--border);border-radius:var(--r);padding:2px}
+.tabs button{padding:5px 14px;border-radius:6px;font-size:13px;color:var(--text-2);transition:.14s}
+.tabs button:hover{color:var(--text)}
+.tabs button[aria-selected="true"]{background:var(--bg);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06);font-weight:500}
+:root[data-theme] .tabs button[aria-selected="true"]{border:1px solid var(--border)}
+@media (prefers-color-scheme:dark){.tabs button[aria-selected="true"]{box-shadow:none;border:1px solid var(--border-strong)}}
+
+/* ---------- 输入区 ---------- */
+.panel{margin-top:24px}
+.label-row{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.label-row h2{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.label-row .hint{font-size:12px;color:var(--text-3)}
+.editor{position:relative}
+textarea#hex{
+  width:100%;min-height:112px;resize:vertical;
+  font-family:var(--mono);font-size:13px;line-height:1.7;letter-spacing:.02em;
+  background:var(--bg-sub);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;outline:none;transition:.15s;
+  white-space:pre-wrap;word-break:break-all;
+}
+textarea#hex:focus{border-color:var(--border-strong);background:var(--bg)}
+textarea#hex::placeholder{color:var(--text-3)}
+.meta-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--text-3)}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{
+  border:1px solid var(--border);border-radius:6px;padding:5px 11px;
+  font-size:12.5px;color:var(--text-2);background:var(--bg);transition:.14s;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-strong)}
+.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:500}
+.btn.primary:hover{opacity:.85;background:var(--accent);color:var(--bg)}
+.btn.sm{padding:3px 8px;font-size:11.5px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+
+/* ---------- 示例 ---------- */
+.examples{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chip{
+  font-size:11.5px;font-family:var(--mono);color:var(--text-2);
+  border:1px dashed var(--border-strong);border-radius:999px;padding:3px 10px;transition:.14s;
+}
+.chip:hover{border-style:solid;border-color:var(--text);color:var(--text);background:var(--bg-hover)}
+
+/* ---------- 结果 ---------- */
+.result{margin-top:28px;display:none}
+.result.show{display:block}
+.card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg)}
+.card + .card{margin-top:16px}
+.card-hd{
+  padding:11px 16px;border-bottom:1px solid var(--border);background:var(--bg-sub);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.card-hd h3{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.card-hd .spacer{flex:1}
+.card-bd{padding:0}
+.card-bd.pad{padding:14px 16px}
+
+/* 概览 */
+.overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:0}
+.ov{padding:12px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.ov .k{font-size:11px;color:var(--text-3);font-family:var(--mono);letter-spacing:.03em;text-transform:uppercase}
+.ov .v{font-size:14px;font-weight:500;margin-top:2px;word-break:break-all}
+.ov .v.mono{font-family:var(--mono);font-size:13px}
+.ov .sub{font-size:11.5px;color:var(--text-3);font-family:var(--mono);margin-top:1px}
+
+/* 字段表 */
+table.fields{width:100%;border-collapse:collapse}
+table.fields th{
+  text-align:left;font-size:11px;font-weight:500;color:var(--text-3);
+  font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;
+  padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-sub);
+  white-space:nowrap;
+}
+table.fields td{padding:8px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+table.fields tr:last-child td{border-bottom:none}
+table.fields tr:hover td{background:var(--bg-hover)}
+td.f-name{width:34%;color:var(--text-2);font-size:13px}
+td.f-name .hex-id{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-left:6px}
+td.f-val{font-size:13.5px;font-weight:450;word-break:break-word}
+td.f-val.mono{font-family:var(--mono);font-size:12.5px}
+td.f-note{width:32%;font-size:11.5px;color:var(--text-3);font-family:var(--mono);word-break:break-word}
+.indent-1{padding-left:32px!important}
+.indent-2{padding-left:48px!important}
+.row-group td{background:var(--bg-sub);font-weight:500}
+.row-group:hover td{background:var(--bg-hover)}
+
+/* 位标志 */
+.bits{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.bit{
+  font-size:11px;font-family:var(--mono);border-radius:4px;padding:1px 6px;
+  border:1px solid var(--border);color:var(--text-3);background:var(--bg-sub);
+}
+.bit.on{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent);font-weight:500}
+.bit.off{border-color:var(--border)}
+.alarm-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.alarm-tag{
+  font-size:11.5px;padding:2px 8px;border-radius:4px;font-weight:500;
+  background:color-mix(in srgb,var(--warn) 12%,transparent);
+  color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);
+}
+
+/* 告警 */
+.alert{
+  display:flex;gap:9px;align-items:flex-start;padding:10px 14px;border-radius:var(--r);
+  font-size:12.5px;margin-bottom:8px;border:1px solid;
+}
+.alert.warn{background:color-mix(in srgb,var(--warn) 8%,transparent);border-color:color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn)}
+.alert.err{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 30%,transparent);color:var(--err)}
+.alert.ok{background:color-mix(in srgb,var(--ok) 8%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:var(--ok)}
+.alert:last-child{margin-bottom:0}
+.alert .ic{flex-shrink:0;font-family:var(--mono);font-weight:700}
+
+/* 原始字节 */
+.rawview{
+  font-family:var(--mono);font-size:12px;line-height:2;word-break:break-all;
+  padding:14px 16px;background:var(--bg-sub);border-radius:8px;margin:0 16px 14px;
+  max-height:260px;overflow:auto;
+}
+.rawview .hl-head{background:color-mix(in srgb,#3b82f6 18%,transparent);border-radius:3px;padding:1px 2px}
+.rawview .hl-len{background:color-mix(in srgb,#8b5cf6 18%,transparent);border-radius:3px;padding:1px 2px}
+.rawview .hl-phone{background:color-mix(in srgb,#10b981 18%,transparent);border-radius:3px;padding:1px 2px}
+.rawview .hl-seq{background:color-mix(in srgb,#f59e0b 20%,transparent);border-radius:3px;padding:1px 2px}
+.rawview .hl-cs{background:color-mix(in srgb,#ef4444 20%,transparent);border-radius:3px;padding:1px 2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-3);font-family:var(--mono);padding:0 16px 14px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+/* 内嵌报文扫描 */
+.scan-item{border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-top:9px}
+.scan-item:first-of-type{margin-top:12px}
+.scan-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.scan-hd b{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.scan-kv{font-size:12.5px;line-height:2;color:var(--text-2)}
+.scan-kv b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.scan-reason{font-size:11.5px;color:var(--text-3);margin-top:6px;line-height:1.7}
+.scan-plate{
+  font-size:12.5px;color:var(--text-2);margin-top:6px;padding:4px 9px;
+  background:color-mix(in srgb,var(--warn) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--warn) 32%,transparent);border-radius:6px;
+}
+.scan-plate b{color:var(--warn);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* 空态 */
+.empty{text-align:center;padding:56px 20px;color:var(--text-3)}
+.empty .big{font-size:32px;font-family:var(--mono);color:var(--border-strong);margin-bottom:10px}
+.empty p{font-size:13px;max-width:420px;margin:0 auto}
+
+/* 构造器 */
+.builder{display:grid;grid-template-columns:1fr;gap:14px}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.field label{display:block;font-size:11.5px;color:var(--text-3);font-family:var(--mono);margin-bottom:4px;letter-spacing:.02em}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--bg-sub);border:1px solid var(--border);border-radius:6px;
+  padding:7px 10px;font-size:13px;outline:none;transition:.14s;
+}
+.field textarea{font-family:var(--mono);font-size:12.5px;min-height:76px;resize:vertical;line-height:1.7}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border-strong);background:var(--bg)}
+.out-hex{
+  font-family:var(--mono);font-size:12.5px;line-height:1.8;word-break:break-all;
+  background:var(--bg-sub);border:1px solid var(--border);border-radius:var(--r);padding:12px;
+  min-height:60px;user-select:all;
+}
+
+/* 字典 */
+.dict-tools{display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.dict-tools input{
+  flex:1;min-width:200px;background:var(--bg-sub);border:1px solid var(--border);
+  border-radius:6px;padding:7px 11px;outline:none;font-size:13px;
+}
+table.dict{width:100%;border-collapse:collapse;font-size:12.5px}
+table.dict th{
+  text-align:left;font-size:11px;font-weight:500;color:var(--text-3);font-family:var(--mono);
+  text-transform:uppercase;letter-spacing:.04em;padding:7px 14px;border-bottom:1px solid var(--border);
+  background:var(--bg-sub);position:sticky;top:0;white-space:nowrap;
+}
+table.dict td{padding:6px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+table.dict tr:hover td{background:var(--bg-hover)}
+table.dict code{font-family:var(--mono);font-size:11.5px;color:var(--text-2)}
+.dict-scroll{max-height:620px;overflow:auto}
+.dir{font-size:10.5px;font-family:var(--mono);border-radius:3px;padding:1px 5px;border:1px solid var(--border);color:var(--text-3)}
+.dir.up{border-color:color-mix(in srgb,var(--ok) 40%,transparent);color:var(--ok)}
+.dir.down{border-color:color-mix(in srgb,#3b82f6 45%,transparent);color:#3b82f6}
+.dir.both{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3)}
+footer .row{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+
+.kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--text-3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+@media (max-width:720px){
+  .wrap{padding:0 14px 60px}
+  .hd{padding:12px 14px}
+  td.f-name{width:40%}
+  td.f-note{display:none}
+  table.dict td:nth-child(2){display:none}
+  .ov{border-right:none}
+  .rawview{font-size:11px;margin:0 10px 10px}
+  .card-hd{padding:10px 12px}
+  table.fields th,table.fields td{padding:7px 12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <div class="logo">
+      <span class="mark">JT</span>
+      <span>808 / 809 报文解析</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="tabs" role="tablist">
+      <button id="tab-parse" role="tab" aria-selected="true">解析</button>
+      <button id="tab-build" role="tab" aria-selected="false">构造</button>
+      <button id="tab-dict" role="tab" aria-selected="false">字典</button>
+    </div>
+    <span class="badge" id="net-badge">离线可用</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 解析 ============ -->
+<section id="view-parse">
+  <div class="panel">
+    <div class="label-row">
+      <h2>粘贴 16 进制报文</h2>
+      <span class="hint">支持空格 / 逗号 / 换行 / 0x 前缀；可含或省略 7E 首尾定界符</span>
+    </div>
+    <div class="editor">
+      <textarea id="hex" spellcheck="false" autocomplete="off"
+        placeholder="7E 02 00 00 2B 01 38 00 13 80 00 01 23 ... 7E"></textarea>
+    </div>
+    <div class="meta-row">
+      <div class="toolbar">
+        <button class="btn primary" id="btn-parse">解析 <span class="kbd">Ctrl↵</span></button>
+        <button class="btn" id="btn-clear">清空</button>
+        <span class="sep"></span>
+        <button class="btn" id="btn-paste">从剪贴板粘贴</button>
+        <button class="btn" id="btn-minify">去除空白</button>
+        <button class="btn" id="btn-copy">复制报文</button>
+      </div>
+      <div class="spacer" style="flex:1"></div>
+      <span class="meta" id="input-meta">0 字节</span>
+    </div>
+    <div class="examples" id="examples"></div>
+  </div>
+
+  <div class="result" id="result"></div>
+</section>
+
+<!-- ============ 构造 ============ -->
+<section id="view-build" style="display:none">
+  <div class="panel">
+    <div class="label-row">
+      <h2>报文构造器</h2>
+      <span class="hint">填写字段生成合法 808 报文（自动计算消息体长度、校验码与转义）；结果可一键回填到解析页</span>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>输入</h3></div>
+      <div class="card-bd pad">
+        <div class="builder">
+          <div class="form-row">
+            <div class="field">
+              <label>消息 ID</label>
+              <input id="b-msgid" value="0x0200" spellcheck="false">
+            </div>
+            <div class="field">
+              <label>终端手机号</label>
+              <input id="b-phone" value="13800138000" spellcheck="false">
+            </div>
+            <div class="field">
+              <label>消息流水号</label>
+              <input id="b-seq" value="1" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>协议版本</label>
+              <select id="b-ver">
+                <option value="1">2011 / 2013（手机号 6 字节）</option>
+                <option value="2" selected>2019（手机号 10 字节 + 版本号）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>加密方式</label>
+              <select id="b-enc">
+                <option value="0">0 - 不加密</option>
+                <option value="1">1 - RSA</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>消息体（16 进制，留空表示无消息体）</label>
+            <textarea id="b-body" spellcheck="false" placeholder="例如位置汇报：00 00 00 01 00 00 00 0F ..."></textarea>
+          </div>
+          <div class="toolbar">
+            <button class="btn primary" id="b-gen">生成报文</button>
+            <button class="btn" id="b-tpl-loc">填充位置汇报模板</button>
+            <button class="btn" id="b-tpl-reg">填充注册模板</button>
+            <button class="btn" id="b-tpl-resp">填充通用应答模板</button>
+            <span class="sep"></span>
+            <button class="btn" id="b-parse-it">生成并解析</button>
+          </div>
+          <div class="field">
+            <label>生成结果</label>
+            <div class="out-hex" id="b-out">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 字典 ============ -->
+<section id="view-dict" style="display:none">
+  <div class="panel">
+    <div class="label-row">
+      <h2>协议数据字典</h2>
+      <span class="hint">消息 ID、报警标志位、状态位、位置附加项、终端参数</span>
+    </div>
+    <div class="dict-tools">
+      <input id="dict-q" placeholder="搜索消息 ID / 名称 / 参数…" spellcheck="false">
+      <select id="dict-kind" class="btn" style="padding:7px 10px">
+        <option value="msg808">808 消息 ID</option>
+        <option value="msg809">809 消息 ID</option>
+        <option value="alarm">报警标志位</option>
+        <option value="status">状态位</option>
+        <option value="extra">位置附加项</option>
+        <option value="param">终端参数</option>
+      </select>
+    </div>
+    <div class="card"><div class="card-bd dict-scroll" id="dict-body"></div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="row">
+    <span>JT/T 808-2011 / 2013 / 2019 · JT/T 809-2011 · 纯前端解析，报文不上传</span>
+    <span>字段释义依据交通运输部标准附录整理，各地扩展项以厂商实现为准</span>
+  </div>
+</footer>
+
+</div>
+
+<script src="build/parser.bundle.js"></script>
+<script>
+(function(){
+'use strict';
+var JT = window.JT808;
+if(!JT){ document.body.innerHTML = '<div class="empty"><div class="big">缺少依赖</div><p>未找到 build/parser.bundle.js，请先运行 <b>node build/bundle.mjs</b> 生成。</p></div>'; return; }
+
+var $ = function(s){ return document.querySelector(s); };
+var rawInput = '';
+var lastResult = null;
+var lastScan = [];
+
+/* ---------------------------------------------------------------
+ * 页面内嵌的字典副本（用于「字典」页展示）
+ * ------------------------------------------------------------- */
+var DICT_MSG_808 = {
+  0x0001:'终端通用应答',0x0002:'终端心跳',0x0003:'终端注销',0x0004:'查询服务器时间请求',
+  0x0005:'终端补传分包请求',0x0100:'终端注册',0x0102:'终端鉴权',0x0103:'设置终端通信参数',
+  0x0104:'查询终端参数',0x0105:'终端控制',0x0106:'查询指定终端参数',0x0107:'查询终端属性',
+  0x0108:'上传终端属性',0x0200:'位置信息汇报',0x0201:'位置信息查询',0x0202:'临时位置跟踪控制',
+  0x0203:'人工确认报警消息',0x0301:'事件报告',0x0302:'提问应答',0x0303:'信息点播/取消',
+  0x0401:'电话回拨',0x0402:'设置电话本',0x0403:'车辆控制应答',0x0404:'设置路线',
+  0x0406:'路线应答',0x0500:'车辆控制',0x0601:'终端升级包通知',0x0602:'终端升级结果通知',
+  0x0700:'行驶记录数据采集命令',0x0701:'电子运单上报',0x0702:'驾驶员身份信息采集上报',
+  0x0703:'上报行驶记录数据(扩展)',0x0704:'定位数据批量上传',0x0705:'CAN总线数据上传',
+  0x0706:'油量/电量数据上报',0x0707:'报警附件上传指令',0x0800:'多媒体事件信息上传',
+  0x0801:'多媒体数据上传',0x0802:'多媒体数据上传应答',0x0805:'摄像头立即拍摄命令',
+  0x0806:'存储多媒体数据检索',0x0807:'存储多媒体数据上传',0x0808:'存储多媒体数据检索应答',
+  0x0900:'数据上行透传',0x0901:'数据压缩上报',0x8100:'终端注册应答',0x8103:'设置终端参数',
+  0x8104:'查询终端参数',0x8105:'终端控制',0x8106:'查询指定终端参数',0x8107:'查询终端属性',
+  0x8108:'下发终端升级包',0x8201:'位置信息查询',0x8202:'临时位置跟踪控制',0x8203:'人工确认报警消息',
+  0x8204:'链路检测',0x8300:'文本信息下发',0x8301:'事件设置',0x8302:'提问下发',
+  0x8303:'信息点播菜单设置',0x8304:'信息服务',0x8400:'电话回拨',0x8401:'设置电话本',
+  0x8500:'车辆控制',0x8600:'设置圆形区域',0x8601:'删除圆形区域',0x8602:'设置矩形区域',
+  0x8603:'删除矩形区域',0x8604:'设置多边形区域',0x8605:'删除多边形区域',0x8606:'设置路线',
+  0x8607:'删除路线',0x8608:'查询区域或线路数据',0x8700:'行驶记录数据(下行)',0x8701:'行驶记录数据上传',
+  0x8800:'多媒体数据上传(旧)',0x8801:'摄像头立即拍摄命令',0x8802:'存储多媒体数据检索',
+  0x8803:'存储多媒体数据上传',0x8804:'录音开始命令',0x8805:'单条存储多媒体数据上传',
+  0x9201:'下发ADAS报警附件上传',0x1210:'报警附件信息消息(苏标)',0x1211:'文件信息上传(苏标)',0x1212:'文件上传完成消息(苏标)'
+};
+var DICT_MSG_809 = {
+  0x1001:'主链路登录请求',0x1002:'主链路登录应答',0x1003:'主链路注销请求',0x1004:'主链路注销应答',
+  0x1005:'主链路连接保持请求',0x1006:'主链路连接保持应答',0x1007:'下级平台实时上传车辆定位信息',
+  0x1008:'下级平台定位信息应答',0x1200:'主链路动态信息交换',0x1201:'主链路动态信息交换应答',
+  0x1202:'车辆定位信息批量上传',0x1203:'车辆定位信息批量上传应答',0x1300:'平台间消息转发',
+  0x1301:'平台间消息转发应答',0x1302:'平台间监管对象互查请求',0x1303:'平台间监管对象互查应答',
+  0x1400:'车辆报警信息上报',0x1401:'下级平台车辆定位信息请求',0x1500:'平台查岗请求',
+  0x1501:'平台查岗应答',0x1205:'上报区域数据',0x1206:'上报线路数据',0x1207:'上报区域线路应答',
+  0x9001:'从链路连接请求',0x9002:'从链路连接应答',0x9003:'从链路注销请求',0x9004:'从链路注销应答',
+  0x9005:'从链路连接保持请求',0x9006:'从链路连接保持应答',0x9007:'从链路动态信息交换',
+  0x9008:'从链路动态信息交换应答'
+};
+var DIR_808 = {0x0001:'both',0x0002:'up',0x0003:'up',0x0004:'up',0x0005:'up',0x0100:'up',0x0102:'up',0x0103:'down',
+  0x0104:'down',0x0105:'down',0x0106:'down',0x0107:'down',0x0108:'up',0x0200:'up',0x0201:'down',0x0202:'down',
+  0x0203:'up',0x0301:'up',0x0302:'up',0x0303:'up',0x0401:'down',0x0402:'down',0x0403:'up',0x0404:'down',
+  0x0406:'up',0x0500:'down',0x0601:'down',0x0602:'up',0x0700:'down',0x0701:'up',0x0702:'up',0x0703:'up',
+  0x0704:'up',0x0705:'up',0x0706:'up',0x0707:'up',0x0800:'up',0x0801:'up',0x0802:'down',0x0805:'down',
+  0x0806:'down',0x0807:'down',0x0808:'up',0x0900:'up',0x0901:'up',0x8100:'down',0x8103:'down',0x8104:'down',
+  0x8105:'down',0x8106:'down',0x8107:'down',0x8108:'down',0x8201:'down',0x8202:'down',0x8203:'down',
+  0x8204:'down',0x8300:'down',0x8301:'down',0x8302:'down',0x8303:'down',0x8304:'down',0x8400:'down',
+  0x8401:'down',0x8500:'down',0x8600:'down',0x8601:'down',0x8602:'down',0x8603:'down',0x8604:'down',
+  0x8605:'down',0x8606:'down',0x8607:'down',0x8608:'down',0x8700:'down',0x8701:'up',0x8800:'up',0x8801:'down',
+  0x8802:'down',0x8803:'down',0x8804:'down',0x8805:'down',0x9201:'down',0x1210:'up',0x1211:'up',0x1212:'up'};
+
+var DICT_ALARM = [
+  [0,'紧急报警'],[1,'超速报警'],[2,'疲劳驾驶报警'],[3,'危险预警'],[4,'GNSS模块发生故障'],
+  [5,'GNSS天线未接或被剪断'],[6,'GNSS天线短路'],[7,'终端主电源欠压'],[8,'终端主电源掉电'],
+  [9,'终端LCD或显示器故障'],[10,'TTS模块故障'],[11,'摄像头故障'],[12,'道路运输证IC卡模块故障'],
+  [13,'超速预警'],[14,'疲劳驾驶预警'],[18,'当天累计驾驶超时'],[19,'超时停车'],[20,'进出区域'],
+  [21,'进出路线'],[22,'路段行驶时间不足/过长'],[23,'路线偏离报警'],[24,'车辆VSS故障'],
+  [25,'车辆油量异常'],[26,'车辆被盗'],[27,'车辆非法点火'],[28,'车辆非法位移'],
+  [29,'碰撞侧翻报警'],[30,'碰撞预警'],[31,'侧翻预警']
+];
+var DICT_STATUS = [
+  [0,'ACC 开/关'],[1,'定位已建立/未定位'],[2,'北纬/南纬'],[3,'东经/西经'],[4,'运营/停运'],
+  [5,'经纬度加密/未加密'],[6,'车辆载重/空载'],[8,'油路正常/断开'],[9,'电路正常/断开'],
+  [10,'车门加锁/解锁'],[11,'车门1开/关'],[12,'车门2开/关'],[13,'车门3开/关'],[14,'车门4开/关'],
+  [15,'车门5开/关'],[16,'GPS 已/未定位'],[17,'北斗 已/未定位'],[18,'GLONASS 已/未定位'],
+  [19,'Galileo 已/未定位']
+];
+var DICT_EXTRA = [
+  ['0x01','里程','1/10 km'],['0x02','油量','1/10 L'],['0x03','行驶记录速度','1/10 km/h'],
+  ['0x04','人工确认报警事件ID',''],['0x05','胎压',''],['0x06','车厢温度',''],['0x07','超速报警附加信息',''],
+  ['0x08','进出区域/路线报警附加信息',''],['0x09','路段行驶时间不足/过长附加信息',''],['0x0A','车辆信号状态',''],
+  ['0x0B','车辆IO状态',''],['0x0C','模拟量',''],['0x0D','无线通信网络信号强度',''],['0x0E','GNSS定位卫星数量','颗'],
+  ['0x0F','扩展车辆信号状态位',''],['0x10','IO状态位',''],['0x11','ADAS行驶安全信息',''],['0x12','DSM驾驶员状态监测',''],
+  ['0x13','轮胎气压监测(TPMS)',''],['0x14','主动拍照/录像',''],['0x15','扩展车辆信号状态(苏标)',''],
+  ['0x16','IO状态(苏标)',''],['0x17','AI识别时间戳',''],['0x18','车辆载荷状态',''],['0x19','车辆OBD信息',''],
+  ['0x1A','OBD里程','m'],['0x1B','OBD车速','1/10 km/h'],['0x1C','OBD诊断信息',''],['0x1D','ALC报警状态',''],
+  ['0x1E','数字量',''],['0x1F','信号强度/网络类型',''],['0x30','无线通信网络信号强度','dbm'],
+  ['0x31','GNSS卫星数及信噪比',''],['0x40','车辆休眠状态',''],['0x51','苏标多媒体信息附加项','']
+];
+var DICT_PARAM = [
+  ['0x0001','终端心跳发送间隔','秒'],['0x0002','TCP消息应答超时时间','秒'],['0x0003','TCP消息重传次数','次'],
+  ['0x0004','UDP消息应答超时时间','秒'],['0x0005','UDP消息重传次数','次'],['0x0006','SMS消息应答超时时间','秒'],
+  ['0x0007','SMS消息重传次数','次'],['0x0010','主服务器APN',''],['0x0013','主服务器地址','IP或域名'],
+  ['0x0017','备份服务器地址','IP或域名'],['0x0018','服务器TCP端口',''],['0x0019','服务器UDP端口',''],
+  ['0x0020','位置汇报策略','0定时1定距2定时定距'],['0x0021','位置汇报方案','0按ACC1按登签2两者'],
+  ['0x0022','驾驶员未登录汇报时间间隔','秒'],['0x0027','休眠时汇报时间间隔','秒'],['0x0029','缺省时间汇报间隔','秒'],
+  ['0x002C','缺省距离汇报间隔','米'],['0x0030','拐点补传角度','度'],['0x0031','电子围栏半径','米'],
+  ['0x0050','报警屏蔽字',''],['0x0055','最高速度','1/10 km/h'],['0x0056','超速持续时间','秒'],
+  ['0x0057','连续驾驶时间限值','秒'],['0x0059','最小休息时间','秒'],['0x005A','最长停车时间','秒'],
+  ['0x005B','超速预警差值','1/10 km/h'],['0x005C','疲劳驾驶预警差值','秒'],
+  ['0x0064','定位信息上传间隔','秒'],['0x0065','车辆里程表读数','1/10 km'],['0x0066','车辆所在省域ID',''],
+  ['0x0067','车辆所在市域ID',''],['0x0068','车牌颜色',''],['0x0069','车牌号(GBK)',''],
+  ['0x0070','图像/视频质量','1~10'],['0x0080','车辆类型',''],['0x0081','车重','kg'],['0x0082','车辆轴数',''],
+  ['0x0083','车辆制造日期',''],['0x0084','道路运输证号',''],['0x0085','车辆VIN',''],['0x0086','终端型号',''],
+  ['0x0087','终端SIM卡ICCID',''],['0x0088','终端硬件版本号',''],['0x0089','终端固件版本号',''],
+  ['0x008A','GNSS模块属性',''],['0x008B','通讯模块属性',''],['0x00F0','终端序列号',''],
+  ['0x00C1','车道偏离报警参数',''],['0x00C2','前向碰撞报警参数',''],['0x00CA','疲劳驾驶监测报警参数','']
+];
+
+/* ---------------------------------------------------------------
+ * 示例报文（由构造器生成，保证合法校验码）
+ * ------------------------------------------------------------- */
+var I12 = function(v){ return [(v>>8)&255, v&255]; };
+var I32 = function(v){ return [(v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255]; };
+function SAMPLE_LOCATION(){
+  return JT.buildFrame(0x0200,{phone:'13800138000',seq:0x0123,version:1}, new Uint8Array([
+    ].concat(I32(0x00000001), I32(0x0f), I32(31230416), I32(121473701),
+      I12(50), I12(650), I12(90),
+      [0x24,0x01,0x01,0x12,0x00,0x00],
+      [0x01,0x04,0x00,0x00,0x30,0x39],
+      [0x0e,0x01,0x0c])));
+}
+function SAMPLE_REG(){
+  var gbk = function(s){
+    var t = new TextDecoder('gbk') , out=[];
+    // 简化：用已知编码填充 'RZ-X1' 等 ASCII + 补 0
+    for(var i=0;i<s.length;i++){
+      var c=s.charCodeAt(i);
+      out.push(c<128?c:0x3f);
+    }
+    return out;
+  };
+  var mfr = gbk('RENMI'); while(mfr.length<5) mfr.push(0);
+  var model = gbk('RZ-X1'); var m2=model.slice(); while(m2.length<20) m2.push(0);
+  var tid = gbk('1234567'); while(tid.length<7) tid.push(0);
+  var vin = gbk('LSVAM4187C2188888').slice(0,17); while(vin.length<17) vin.push(0);
+  return JT.buildFrame(0x0100,{phone:'13800138000',seq:1,version:2}, new Uint8Array(
+    [].concat(I12(61), I12(3000), mfr, m2, tid, [0x01], vin)));
+}
+function SAMPLE_BATCH(){
+  var loc = [].concat(I32(0), I32(0x0f), I32(31230416), I32(121473701),
+    I12(20), I12(500), I12(180), [0x24,0x06,0x0f,0x0a,0x1e,0x00]);
+  return JT.buildFrame(0x0704,{phone:'13800138000',seq:20,version:1}, new Uint8Array(
+    [].concat(I12(2), [0x00], I12(loc.length), loc, I12(loc.length), loc)));
+}
+function SAMPLE_809_LOGIN(){
+  var pwd=[0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38];
+  return JT.buildFrame(0x1001,{phone:'13800138000',seq:1,version:1}, new Uint8Array(
+    [].concat(I32(10001), pwd, [0xc0,0xa8,0x01,0x64], I12(12345), [0xc0,0xa8,0x01,0x01], I12(6000))));
+}
+function SAMPLE_809_BATCH(){
+  var loc = [].concat(I32(0), I32(0x0f), I32(31230416), I32(121473701),
+    I12(50), I12(650), I12(90), [0x24,0x01,0x01,0x12,0x00,0x00]);
+  var plate = [0xc9,0xc2,0x41,0x31,0x32,0x33,0x34,0x35]; // 陕A12345 (GBK)
+  while(plate.length<21) plate.push(0);
+  var one = [].concat([0x01,0x01], plate, [0x02,0x00], I12(loc.length), loc);
+  return JT.buildFrame(0x1202,{phone:'13800138000',seq:7,version:1}, new Uint8Array([].concat(I32(1), one)));
+}
+function SAMPLE_RESP(){
+  return JT.buildFrame(0x0001,{phone:'13800138000',seq:100,version:1}, new Uint8Array([].concat(I12(42), I12(0x8100), [0x00])));
+}
+function SAMPLE_TEXT(){
+  var txt=[0xc7,0xeb,0xd7,0xa2,0xd2,0xe2,0xd0,0xd0,0xb3,0xb5,0xb0,0xb2,0xc8,0xab]; // 请注意行车安全
+  return JT.buildFrame(0x8300,{phone:'13800138000',seq:30,version:1}, new Uint8Array([0x00,0x00].concat(txt)));
+}
+var SAMPLES = [
+  ['0x0200 位置汇报', SAMPLE_LOCATION, 1],
+  ['0x0100 终端注册(2019)', SAMPLE_REG, 2],
+  ['0x0704 批量位置', SAMPLE_BATCH, 3],
+  ['0x0001 终端通用应答', SAMPLE_RESP, 4],
+  ['0x8300 文本下发', SAMPLE_TEXT, 5],
+  ['0x1001 809 主链路登录', SAMPLE_809_LOGIN, 6],
+  ['0x1202 809 车辆定位批量', SAMPLE_809_BATCH, 7],
+];
+
+/* ---------------------------------------------------------------
+ * 渲染
+ * ------------------------------------------------------------- */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function hexStr(v){ return '0x'+v.toString(16).toUpperCase().padStart(4,'0'); }
+
+function renderResult(res){
+  var h = [];
+
+  /* ---- 概览 ---- */
+  var dirText = res.msgDir==='up'?'终端 → 平台':res.msgDir==='down'?'平台 → 终端':res.msgDir==='both'?'双向':'—';
+  h.push('<div class="card"><div class="card-hd"><h3>报文概览</h3><div class="spacer"></div>'
+    + '<span class="badge">'+esc(res.versionText)+'</span>'
+    + (res.protocol==='809' ? '<span class="badge">JT/T 809</span>' : '<span class="badge">JT/T 808</span>')
+    + '</div><div class="overview">');
+  h.push(ov('消息名称', res.msgName));
+  h.push(ov('消息 ID', res.msgIdHex, '', true));
+  h.push(ov('方向', dirText));
+  h.push(ov('终端手机号', res.header.phone, res.header.version===2?'10 字节 BCD':'6 字节 BCD', true));
+  h.push(ov('消息流水号', String(res.header.seq), '', true));
+  h.push(ov('消息体长度', res.header.bodyLen + ' 字节'));
+  h.push(ov('校验码', res.checksum.ok===true?'通过':res.checksum.ok===false?'不通过':'未检测',
+    res.checksum.declared!==null ? '声明 ' + hex2(res.checksum.declared) + ' / 计算 ' + hex2(res.checksum.calculated) : ''));
+  h.push(ov('加密方式', res.header.encrypt===0?'不加密':'加密方式 '+res.header.encrypt,
+    'bit10-12'));
+  h.push(ov('分包', res.header.isSubPackage?('是（'+res.header.pkgIndex+'/'+res.header.pkgTotal+'）'):'否', 'bit13'));
+  h.push(ov('帧长度', res.frameInfo.totalBytes + ' 字节',
+    res.frameInfo.escapedBytes + ' 转义 → ' + res.frameInfo.unescapedBytes + ' 还原'));
+  h.push('</div></div>');
+
+  /* ---- 告警 ---- */
+  if(res.warnings.length || res.checksum.ok===true){
+    h.push('<div class="card"><div class="card-hd"><h3>校验与告警</h3></div><div class="card-bd pad">');
+    if(res.checksum.ok===true && !res.warnings.length){
+      h.push('<div class="alert ok"><span class="ic">OK</span><span>校验码正确，报文结构完整。</span></div>');
+    }
+    for(var i=0;i<res.warnings.length;i++){
+      h.push('<div class="alert warn"><span class="ic">!</span><span>'+esc(res.warnings[i])+'</span></div>');
+    }
+    h.push('</div></div>');
+  }
+
+  /* ---- 消息头 ---- */
+  h.push('<div class="card"><div class="card-hd"><h3>消息头</h3><div class="spacer"></div>'
+    + '<span class="badge">'+(res.header.version===2?'含版本号字段':'无版本号字段')+'</span></div>');
+  h.push('<div class="card-bd"><table class="fields"><thead><tr><th>字段</th><th>值</th><th>说明</th></tr></thead><tbody>');
+  for(var j=0;j<res.header.fields.length;j++){
+    var fd = res.header.fields[j];
+    h.push('<tr><td class="f-name">'+esc(fd.label)+'</td><td class="f-val mono">'+esc(fd.value)
+      +'</td><td class="f-note">'+esc(fd.hint||'')+'</td></tr>');
+  }
+  h.push('</tbody></table></div></div>');
+
+  /* ---- 消息体 ---- */
+  h.push('<div class="card"><div class="card-hd"><h3>消息体</h3><div class="spacer"></div>'
+    + '<span class="badge">'+res.header.bodyLen+' 字节</span></div>');
+  if(res.bodyFields.length){
+    h.push('<div class="card-bd"><table class="fields"><thead><tr><th>字段</th><th>值</th><th>说明</th></tr></thead><tbody>');
+    h.push(renderFields(res.bodyFields, 0));
+    h.push('</tbody></table></div>');
+  } else {
+    h.push('<div class="card-bd pad"><span style="color:var(--text-3);font-size:13px">消息体为空</span></div>');
+  }
+  h.push('</div>');
+
+  /* ---- 原始字节 ---- */
+  h.push('<div class="card"><div class="card-hd"><h3>原始字节</h3><div class="spacer"></div>'
+    + '<button class="btn sm" id="copy-hex">复制</button></div><div class="card-bd">');
+  h.push('<div class="rawview">'+renderRaw(res)+'</div>');
+  h.push('<div class="legend">'
+    + '<span><i style="background:#3b82f6"></i>消息ID</span>'
+    + '<span><i style="background:#8b5cf6"></i>消息体属性</span>'
+    + '<span><i style="background:#10b981"></i>终端手机号</span>'
+    + '<span><i style="background:#f59e0b"></i>流水号</span>'
+    + '<span><i style="background:#ef4444"></i>校验码</span>'
+    + '</div></div></div>');
+
+  return h.join('');
+}
+
+function ov(k,v,sub,mono){
+  return '<div class="ov"><div class="k">'+esc(k)+'</div><div class="v'+(mono?' mono':'')+'">'+esc(v)
+    +'</div>'+(sub?'<div class="sub">'+esc(sub)+'</div>':'')+'</div>';
+}
+function hex2(v){ return '0x'+Number(v).toString(16).toUpperCase().padStart(2,'0'); }
+
+function renderFields(list, depth){
+  var h='';
+  for(var i=0;i<list.length;i++){
+    var it=list[i];
+    var cls = depth>0 ? ' indent-'+Math.min(depth,2) : '';
+    if(it.kind==='group'){
+      h += '<tr class="row-group"><td class="f-name'+cls+'">'+esc(it.label)
+        + (it.hint?'<span class="hex-id">'+esc(it.hint)+'</span>':'')
+        + '</td><td class="f-val" colspan="2"></td></tr>';
+      h += renderFields(it.children||[], depth+1);
+      continue;
+    }
+    var valHtml = esc(it.value===undefined?'':it.value);
+    if(it.kind==='bits' && it.bits){
+      valHtml = '<div>'+esc(it.value)+'</div><div class="bits">';
+      var seen={};
+      for(var b=0;b<it.bits.length;b++){
+        var bt=it.bits[b];
+        if(bt.bit===15 && !bt.set) continue;
+        if(bt.bit===7 && !bt.set) continue;
+        valHtml += '<span class="bit '+(bt.set?'on':'off')+'" title="bit '+bt.bit+(bt.desc?(' — '+bt.desc):'')+'">'
+          + esc(bt.label||bt.name) + '</span>';
+      }
+      valHtml += '</div>';
+      if(it.onList && it.onList.length){
+        valHtml += '<div class="alarm-list">';
+        for(var k=0;k<it.onList.length;k++) valHtml += '<span class="alarm-tag">'+esc(it.onList[k])+'</span>';
+        valHtml += '</div>';
+      }
+    } else if(it.hex){
+      valHtml += '<div style="font-family:var(--mono);font-size:11.5px;color:var(--text-3);margin-top:3px;word-break:break-all">'+esc(it.hex)+'</div>';
+    }
+    h += '<tr><td class="f-name'+cls+'">'+esc(it.label)
+      + (it.key && /^0x|PARAM|EXTRA/.test(it.key) ? '<span class="hex-id">'+esc(it.key)+'</span>' : '')
+      + '</td><td class="f-val'+(it.monospace?' mono':'')+'">'+valHtml
+      + '</td><td class="f-note">'+esc(it.hint||'')+'</td></tr>';
+  }
+  return h;
+}
+
+function renderRaw(res){
+  var all = res.raw.input.replace(/[^0-9a-fA-F]/g,'');
+  var bytes = [];
+  for(var i=0;i<all.length;i+=2) bytes.push(parseInt(all.substr(i,2),16));
+  if(!bytes.length) return '—';
+
+  // 定位关键区间（基于还原后字节流在原始输入中的位置做近似标注）
+  var hl = {};  // index -> class
+  var start = 0;
+  if(bytes[0]===0x7e){ hl[0]='hl-cs'; start=1; }
+  var end = bytes.length;
+  if(bytes[end-1]===0x7e){ hl[end-1]='hl-cs'; end-=1; }
+
+  // 消息头区间：ID(2) ATTR(2) [VER(1)] PHONE(6/10) SEQ(2) [PKG(4)]
+  var p = start;
+  for(var a=0;a<2;a++) hl[p+a]='hl-head';
+  for(var a2=0;a2<2;a2++) hl[p+2+a2]='hl-len';
+  p += 4;
+  if(res.header.version===2){ hl[p]='hl-head'; p+=1; for(var c=0;c<10;c++) hl[p+c]='hl-phone'; p+=10; }
+  else { for(var c2=0;c2<6;c2++) hl[p+c2]='hl-phone'; p+=6; }
+  for(var s=0;s<2;s++) hl[p+s]='hl-seq';
+  p += 2;
+  if(res.header.isSubPackage){ for(var g=0;g<4;g++) hl[p+g]='hl-seq'; p+=4; }
+  // 校验码（还原流最后一个字节，定位到原始输入对应位置需近似处理）
+  if(end-1 > p) hl[end-1] = 'hl-cs';
+
+  var out=[];
+  for(var x=0;x<bytes.length;x++){
+    var t = bytes[x].toString(16).toUpperCase().padStart(2,'0');
+    out.push(hl[x] ? '<span class="'+hl[x]+'">'+t+'</span>' : t);
+  }
+  return out.join(' ');
+}
+
+/* ---------------------------------------------------------------
+ * 解析流程
+ * ------------------------------------------------------------- */
+/* ---------------------------------------------------------------
+ * 内嵌报文扫描（当输入不是一条标准帧时，尝试定位其中真正的协议数据）
+ * ------------------------------------------------------------- */
+function renderScanCard(srcHex){
+  var s;
+  try{ s = JT.scanEmbedded(srcHex); }catch(e){ return ''; }
+  lastScan = (s.candidates || []).slice(0, 8);
+  if(!lastScan.length) return '';
+
+  var h = '<div class="card"><div class="card-hd"><h3>内嵌报文扫描</h3><div class="spacer"></div>'
+    + '<span class="badge">找到 ' + lastScan.length + ' 处</span></div><div class="card-bd pad">'
+    + '<div class="alert warn"><span class="ic">i</span><span>这段数据不像一条完整的 808 / 809 报文帧'
+    + '（没有 7E 定界符，首字节也不是合法消息头）。下面是在字节流里自动定位到的、符合协议特征的数据段，可直接单独解析。</span></div>';
+
+  for(var i=0;i<lastScan.length;i++){
+    var c = lastScan[i];
+    h += '<div class="scan-item">'
+      + '<div class="scan-hd"><b>' + esc(c.msgName) + '</b>'
+      + '<span class="badge">偏移 ' + c.offset + ' · ' + c.length + ' 字节</span>'
+      + (c.kind === 'location' ? '<span class="badge">标准 0x0200 消息体</span>' : '')
+      + '<span style="flex:1"></span>'
+      + '<button class="btn sm btn-slice" data-idx="' + i + '">解析这段</button></div>';
+
+    if(c.kind === 'location'){
+      h += '<div class="scan-kv">'
+        + '纬经度 <b>' + c.lat.toFixed(6) + ', ' + c.lon.toFixed(6) + '</b>'
+        + '　速度 <b>' + c.speed.toFixed(1) + ' km/h</b>'
+        + '　高程 <b>' + c.altitude + ' 米</b>'
+        + '　方向 <b>' + c.direction + '°</b><br>'
+        + 'GPS 时间 <b>' + esc(c.time) + '</b>'
+        + '　状态 <b>0x' + (c.status >>> 0).toString(16).toUpperCase().padStart(8,'0') + '</b>'
+        + '　报警标志 <b>0x' + (c.alarm >>> 0).toString(16).toUpperCase().padStart(8,'0') + '</b>'
+        + '</div>'
+        + (c.headPlate ? '<div class="scan-plate">自定义包头车牌号（推测）：<b>' + esc(c.headPlate) + '</b></div>' : '')
+        + '<div class="scan-reason">' + esc(c.reason)
+        + (c.cleanEnd ? '；消息体到此结束，其后为 0x00 填充' : '；其后还有非填充字节，可能属于平台自定义字段') + '</div>';
+    } else {
+      h += '<div class="scan-kv">消息体声明 <b>' + c.bodyLen + ' 字节</b>'
+        + '　校验码 <b>' + (c.checksumOk === true ? '通过' : c.checksumOk === false ? '不符' : '无') + '</b></div>'
+        + '<div class="scan-reason">' + esc(c.reason) + '</div>';
+    }
+    h += '</div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function parseSlice(idx){
+  var c = lastScan[idx];
+  if(!c) return;
+  var bytes = JT.hexToBytes($('#hex').value);
+  var slice = bytes.slice(c.offset, c.offset + c.length);
+  var r;
+  if(c.kind === 'location'){
+    // 该段是消息体，头部由工具合成
+    r = JT.parseRawBody(0x0200, slice, { version: 1 });
+  } else {
+    // 该段是完整帧内容，按原样重新包成合法帧（保留其校验码）
+    var e = JT.escape(slice);
+    var frame = new Uint8Array(e.length + 2);
+    frame[0] = 0x7E; frame.set(e, 1); frame[frame.length - 1] = 0x7E;
+    r = JT.parse(JT.bytesToHex(frame));
+  }
+  var note = '<div class="card"><div class="card-hd"><h3>已切换到内嵌数据</h3></div><div class="card-bd pad">'
+    + '<div class="alert ok"><span class="ic">OK</span><span>已按偏移 ' + c.offset + ' 起的 ' + c.length + ' 字节解析。'
+    + (c.kind === 'location' ? '该段是消息体，报文头由工具合成。' : '')
+    + (c.headPlate ? ' 自定义包头车牌号（推测）：<b>' + esc(c.headPlate) + '</b>' : '')
+    + '</span></div><button class="btn" id="btn-back">返回原始报文</button></div></div>';
+  $('#result').innerHTML = note + renderResult(r);
+  bindResult($('#hex').value, true);
+  var back = $('#btn-back');
+  if(back) back.addEventListener('click', doParse);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function bindResult(srcHex, noScan){
+  var cp = $('#copy-hex');
+  if(cp) cp.addEventListener('click', function(){
+    copyText(stripHex(srcHex));
+    cp.textContent = '已复制';
+    setTimeout(function(){ cp.textContent = '复制'; }, 1200);
+  });
+  if(noScan) return;
+  var btns = $('#result').querySelectorAll ? $('#result').querySelectorAll('.btn-slice') : [];
+  for(var i=0;i<btns.length;i++){
+    btns[i].addEventListener('click', function(){
+      parseSlice(parseInt(this.getAttribute('data-idx'), 10));
+    });
+  }
+}
+
+/* ---------------------------------------------------------------
+ * 解析流程
+ * ------------------------------------------------------------- */
+function doParse(){
+  var v = $('#hex').value.trim();
+  $('#input-meta').textContent = countBytes(v) + ' 字节';
+  if(!v){ $('#result').classList.remove('show'); return; }
+  try{
+    lastResult = JT.parse(v);
+  }catch(e){
+    lastResult = null;
+    $('#result').innerHTML = '<div class="card"><div class="card-hd"><h3>解析失败</h3></div>'
+      + '<div class="card-bd pad"><div class="alert err"><span class="ic">ERR</span><span>'+esc(e.message)+'</span></div>'
+      + '<p style="font-size:12.5px;color:var(--text-3);margin-top:8px">请检查：是否含非 16 进制字符、字节数是否为偶数。</p>'
+      + '</div></div>';
+    $('#result').classList.add('show');
+    return;
+  }
+  // 消息 ID 未知 或 校验码不通过 → 多半不是帧，尝试扫描内嵌数据
+  var needScan = /^未知消息/.test(lastResult.msgName) || lastResult.checksum.ok === false;
+  $('#result').innerHTML = renderResult(lastResult) + (needScan ? renderScanCard(v) : '');
+  $('#result').classList.add('show');
+  bindResult(v);
+}
+function countBytes(v){
+  var s = v.replace(/0x/gi,'').replace(/[^0-9a-fA-F]/g,'');
+  return Math.ceil(s.length/2);
+}
+function stripHex(v){
+  return v.replace(/0x/gi,'').replace(/[^0-9a-fA-F]/g,'').toUpperCase().replace(/(.{2})/g,'$1 ').trim();
+}
+function copyText(t){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).catch(function(){ fallbackCopy(t); });
+  } else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ---------------------------------------------------------------
+ * 事件绑定
+ * ------------------------------------------------------------- */
+var inputTimer=null;
+$('#hex').addEventListener('input', function(){
+  $('#input-meta').textContent = countBytes(this.value) + ' 字节';
+  clearTimeout(inputTimer);
+  inputTimer = setTimeout(doParse, 320);
+});
+$('#hex').addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); doParse(); }
+});
+$('#btn-parse').addEventListener('click', doParse);
+$('#btn-clear').addEventListener('click', function(){
+  $('#hex').value=''; $('#input-meta').textContent='0 字节';
+  $('#result').classList.remove('show'); $('#result').innerHTML='';
+  $('#hex').focus();
+});
+$('#btn-paste').addEventListener('click', function(){
+  var btn=this;
+  if(navigator.clipboard && navigator.clipboard.readText){
+    navigator.clipboard.readText().then(function(t){
+      $('#hex').value = t.trim(); doParse();
+    }).catch(function(){ btn.textContent='请手动粘贴 (Ctrl+V)'; setTimeout(function(){btn.textContent='从剪贴板粘贴';},1800); });
+  } else { btn.textContent='请手动粘贴 (Ctrl+V)'; setTimeout(function(){btn.textContent='从剪贴板粘贴';},1800); }
+});
+$('#btn-minify').addEventListener('click', function(){
+  $('#hex').value = stripHex($('#hex').value); doParse();
+});
+$('#btn-copy').addEventListener('click', function(){
+  var b=this; copyText(stripHex($('#hex').value));
+  b.textContent='已复制'; setTimeout(function(){b.textContent='复制报文';},1200);
+});
+
+/* Tab 切换 */
+function setTab(name){
+  ['parse','build','dict'].forEach(function(n){
+    $('#view-'+n).style.display = (n===name?'':'none');
+    $('#tab-'+n).setAttribute('aria-selected', n===name?'true':'false');
+  });
+  if(name==='dict') renderDict();
+  if(name==='build') syncBuildOut();
+}
+$('#tab-parse').addEventListener('click', function(){ setTab('parse'); });
+$('#tab-build').addEventListener('click', function(){ setTab('build'); });
+$('#tab-dict').addEventListener('click', function(){ setTab('dict'); });
+
+/* 示例按钮 */
+(function(){
+  var box = $('#examples');
+  var frag = document.createDocumentFragment();
+  for(var i=0;i<SAMPLES.length;i++){
+    (function(item){
+      var b=document.createElement('button');
+      b.className='chip'; b.textContent=item[0];
+      b.addEventListener('click', function(){
+        try{
+          var f=item[1]();
+          $('#hex').value = JT.bytesToHex(f);
+          setTab('parse'); doParse();
+        }catch(e){ alert('示例生成失败：'+e.message); }
+      });
+      frag.appendChild(b);
+    })(SAMPLES[i]);
+  }
+  box.appendChild(frag);
+})();
+
+/* ---------------------------------------------------------------
+ * 构造器
+ * ------------------------------------------------------------- */
+function buildOut(){
+  var idRaw = $('#b-msgid').value.trim();
+  var msgId = /^0x/i.test(idRaw) ? parseInt(idRaw,16) : parseInt(idRaw,10);
+  if(isNaN(msgId)) throw new Error('消息 ID 无效');
+  var phone = $('#b-phone').value.replace(/\D/g,'');
+  var seq = parseInt($('#b-seq').value,10) || 0;
+  var ver = parseInt($('#b-ver').value,10);
+  var enc = parseInt($('#b-enc').value,10);
+  var bodyHex = $('#b-body').value.replace(/0x/gi,'').replace(/[^0-9a-fA-F]/g,'');
+  if(bodyHex.length % 2) bodyHex = bodyHex.slice(0,-1);
+  var body = new Uint8Array(bodyHex.length/2);
+  for(var i=0;i<body.length;i++) body[i]=parseInt(bodyHex.substr(i*2,2),16);
+  return JT.buildFrame(msgId, {phone:phone, seq:seq, version:ver, encrypt:enc}, body);
+}
+function syncBuildOut(){
+  try{
+    var f = buildOut();
+    $('#b-out').textContent = JT.bytesToHex(f);
+    $('#b-out').dataset.ok='1';
+  }catch(e){
+    $('#b-out').textContent = '生成失败：'+e.message;
+    $('#b-out').dataset.ok='';
+  }
+}
+$('#b-gen').addEventListener('click', syncBuildOut);
+['#b-msgid','#b-phone','#b-seq','#b-ver','#b-enc','#b-body'].forEach(function(s){
+  $(s).addEventListener('input', syncBuildOut);
+  $(s).addEventListener('change', syncBuildOut);
+});
+$('#b-tpl-loc').addEventListener('click', function(){
+  $('#b-msgid').value='0x0200';
+  $('#b-body').value = '00 00 00 01 00 00 00 0F 01 DC 89 D0 07 3D 8A A5 00 32 02 8A 00 5A 24 01 01 12 00 00 01 04 00 00 30 39 0E 01 0C';
+  syncBuildOut();
+});
+$('#b-tpl-reg').addEventListener('click', function(){
+  $('#b-msgid').value='0x0100';
+  $('#b-ver').value='2';
+  $('#b-body').value = '00 3D 0B B8 52 45 4E 4D 49 52 5A 2D 58 31 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 31 32 33 34 35 36 37 01 4C 53 56 41 4D 34 31 38 37 43 32 31 38 38 38 38 38';
+  syncBuildOut();
+});
+$('#b-tpl-resp').addEventListener('click', function(){
+  $('#b-msgid').value='0x0001';
+  $('#b-body').value = '00 2A 81 00 00';
+  syncBuildOut();
+});
+$('#b-parse-it').addEventListener('click', function(){
+  syncBuildOut();
+  if($('#b-out').dataset.ok!=='1') return;
+  $('#hex').value = $('#b-out').textContent;
+  setTab('parse');
+  doParse();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ---------------------------------------------------------------
+ * 字典页
+ * ------------------------------------------------------------- */
+function renderDict(){
+  var kind = $('#dict-kind').value;
+  var q = $('#dict-q').value.trim().toLowerCase();
+  var rows = [];
+  function hit(){ return !q; }
+
+  if(kind==='msg808' || kind==='msg809'){
+    var src = kind==='msg808' ? DICT_MSG_808 : DICT_MSG_809;
+    var keys = Object.keys(src).map(Number).sort(function(a,b){return a-b;});
+    rows.push('<table class="dict"><thead><tr><th>消息 ID</th><th>方向</th><th>名称</th></tr></thead><tbody>');
+    for(var i=0;i<keys.length;i++){
+      var k=keys[i], nm=src[k];
+      var dirKey = kind==='msg808' ? DIR_808[k] : (k>=0x9000? 'up':'both');
+      var dirText = dirKey==='up'?'终端→平台':dirKey==='down'?'平台→终端':'双向';
+      var dcls = dirKey==='up'?'up':dirKey==='down'?'down':'both';
+      if(q && !(('0x'+k.toString(16)).toLowerCase().indexOf(q)>=0 || nm.toLowerCase().indexOf(q)>=0)) continue;
+      rows.push('<tr><td><code>0x'+k.toString(16).toUpperCase().padStart(4,'0')+'</code></td>'
+        +'<td><span class="dir '+dcls+'">'+dirText+'</span></td><td>'+esc(nm)+'</td></tr>');
+    }
+    rows.push('</tbody></table>');
+  } else if(kind==='alarm'){
+    rows.push('<table class="dict"><thead><tr><th>bit</th><th>含义</th></tr></thead><tbody>');
+    for(var a=0;a<DICT_ALARM.length;a++){
+      var it=DICT_ALARM[a];
+      if(q && !(String(it[0]).indexOf(q)>=0 || it[1].toLowerCase().indexOf(q)>=0)) continue;
+      rows.push('<tr><td><code>bit '+it[0]+'</code></td><td>'+esc(it[1])+'</td></tr>');
+    }
+    rows.push('</tbody></table>');
+  } else if(kind==='status'){
+    rows.push('<table class="dict"><thead><tr><th>bit</th><th>含义</th></tr></thead><tbody>');
+    for(var s=0;s<DICT_STATUS.length;s++){
+      var st=DICT_STATUS[s];
+      if(q && !(String(st[0]).indexOf(q)>=0 || st[1].toLowerCase().indexOf(q)>=0)) continue;
+      rows.push('<tr><td><code>bit '+st[0]+'</code></td><td>'+esc(st[1])+'</td></tr>');
+    }
+    rows.push('</tbody></table>');
+  } else if(kind==='extra'){
+    rows.push('<table class="dict"><thead><tr><th>附加项 ID</th><th>名称</th><th>单位</th></tr></thead><tbody>');
+    for(var e=0;e<DICT_EXTRA.length;e++){
+      var ex=DICT_EXTRA[e];
+      if(q && !(ex[0].toLowerCase().indexOf(q)>=0 || ex[1].toLowerCase().indexOf(q)>=0)) continue;
+      rows.push('<tr><td><code>'+esc(ex[0])+'</code></td><td>'+esc(ex[1])+'</td><td><code>'+esc(ex[2])+'</code></td></tr>');
+    }
+    rows.push('</tbody></table>');
+  } else if(kind==='param'){
+    rows.push('<table class="dict"><thead><tr><th>参数 ID</th><th>名称</th><th>单位/取值</th></tr></thead><tbody>');
+    for(var p=0;p<DICT_PARAM.length;p++){
+      var pm=DICT_PARAM[p];
+      if(q && !(pm[0].toLowerCase().indexOf(q)>=0 || pm[1].toLowerCase().indexOf(q)>=0)) continue;
+      rows.push('<tr><td><code>'+esc(pm[0])+'</code></td><td>'+esc(pm[1])+'</td><td><code>'+esc(pm[2])+'</code></td></tr>');
+    }
+    rows.push('</tbody></table>');
+  }
+  $('#dict-body').innerHTML = rows.join('');
+}
+$('#dict-q').addEventListener('input', renderDict);
+$('#dict-kind').addEventListener('change', renderDict);
+
+/* 初始示例 */
+try{
+  $('#hex').value = JT.bytesToHex(SAMPLE_LOCATION());
+  $('#input-meta').textContent = countBytes($('#hex').value) + ' 字节';
+  doParse();
+}catch(e){}
+
+/* 网络状态 */
+(function(){
+  var b=$('#net-badge');
+  function upd(){ b.textContent = navigator.onLine ? '离线可用' : '离线模式'; }
+  window.addEventListener('online', upd); window.addEventListener('offline', upd); upd();
+})();
+
+})();
+</script>
+</body>
+</html>
