@@ -520,6 +520,78 @@ console.log('\n=== 用例 15B: 809 子业务（0x1401 报警督办应答 + 0x940
 }
 
 /* ============================================================
+ * 用例 16：主动安全报警（808 0x0200 附加项 0x64/0x65）+ 0x1402 WARN_TYPE
+ * ========================================================== */
+console.log('\n=== 用例 16: 主动安全报警附加项(ADAS 0x64 / DSM 0x65) + 0x1402 报警类型 ===');
+{
+  const LAT = 31230416, LON = 121473701;
+  // --- 0x0200 + 附加项 0x64 ADAS（山东团体标准 表4-15） ---
+  const body = [
+    ...i32be(0), ...i32be(STATUS_OK), ...i32be(LAT), ...i32be(LON),
+    ...i16be(50), ...i16be(650), ...i16be(90), 0x24, 0x01, 0x01, 0x12, 0x00, 0x00,
+    // 附加项 0x64：报警ID=1 状态=开始 类型=前向碰撞 级别=一级 前车车速60 距离30 偏离=右侧 标志类型=限速 数据=80
+    0x64, 0x0c, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x3c, 0x1e, 0x02, 0x01, 0x50,
+  ];
+  const res = parse(bytesToHex(buildFrame(0x0200, { phone: '13800138000', seq: 1, version: 1 }, new Uint8Array(body))));
+  includes('0x64 附加项名称', JSON.stringify(res.bodyFields), '高级驾驶辅助系统(ADAS)报警');
+  includes('0x64 前向碰撞报警', JSON.stringify(res.bodyFields), '前向碰撞报警');
+  includes('0x64 一级报警', JSON.stringify(res.bodyFields), '一级报警');
+  includes('0x64 右侧偏离', JSON.stringify(res.bodyFields), '右侧偏离');
+  includes('0x64 限速标志', JSON.stringify(res.bodyFields), '限速标志');
+  includes('0x64 前车车速60', JSON.stringify(res.bodyFields), '60 km/h');
+
+  // --- 0x0200 + 附加项 0x65 DSM（山东团体标准 表4-17） ---
+  const dsm = [
+    0x65, 0x2c, // 附加项 0x65，长度 44
+    0x00, 0x00, 0x00, 0x05,           // 报警ID
+    0x01,                             // 状态 开始
+    0x01,                             // 类型 疲劳驾驶
+    0x01,                             // 级别 一级
+    0x07,                             // 疲劳程度 7
+    0x00, 0x00, 0x00, 0x00,           // 预留
+    0x50,                             // 车速 80
+    0x00, 0x64,                       // 高程 100
+    0x01, 0xDE, 0x1D, 0x30,           // 纬度 31.230416
+    0x07, 0x3C, 0x79, 0xD5,           // 经度 121.473701
+    0x26, 0x09, 0x23, 0x10, 0x42, 0x53, // 2026-09-23 10:42:53
+    0x00, 0x01,                       // 车辆状态
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+  ];
+  const body2 = [
+    ...i32be(0), ...i32be(STATUS_OK), ...i32be(LAT), ...i32be(LON),
+    ...i16be(50), ...i16be(650), ...i16be(90), 0x24, 0x01, 0x01, 0x12, 0x00, 0x00,
+    ...dsm,
+  ];
+  const res2 = parse(bytesToHex(buildFrame(0x0200, { phone: '13800138000', seq: 1, version: 1 }, new Uint8Array(body2))));
+  includes('0x65 附加项名称', JSON.stringify(res2.bodyFields), '驾驶员状态监测(DSM)报警');
+  includes('0x65 疲劳驾驶报警', JSON.stringify(res2.bodyFields), '疲劳驾驶报警');
+  includes('0x65 时间', JSON.stringify(res2.bodyFields), '2026-09-23 10:42:53');
+
+  // --- 0x1200 + 0x1402，WARN_TYPE=0x0001 显示 超速报警 ---
+  const plateBytes = fixed(gbkOf('陕KE8722'), 21);
+  const alarmId = '6100000013800138000014021710825600';
+  const info = gbkOf('测试报警信息');
+  const subBody = [
+    ...plateBytes, 0x01, ...i16be(0x1402), ...i32be(11 + 2 + 8 + 8 + 8 + 21 + 1 + 11 + 4 + 34 + 4 + info.length + 4 + 4 + 4 + 4 + 100 + 20),
+    ...fixed(gbkOf('61000010001'), 11),
+    0x00, 0x01,                          // WARN_TYPE = 0x0001 超速报警
+    0x26, 0x09, 0x23, 0x10, 0x42, 0x53, 0x00, 0x00,
+    0x26, 0x09, 0x23, 0x10, 0x40, 0x00, 0x00, 0x00,
+    0x26, 0x09, 0x23, 0x10, 0x45, 0x00, 0x00, 0x00,
+    ...plateBytes, 0x01, ...fixed(gbkOf('00000000000'), 11),
+    ...i32be(1),
+    ...Array.from(alarmId, (c) => c.charCodeAt(0)),
+    ...i32be(info.length), ...info,
+    ...i32be(LAT), ...i32be(LON), ...i32be(LAT), ...i32be(LON),
+    ...fixed(gbkOf('张三'), 100), ...fixed(gbkOf('37'), 20),
+  ];
+  const res3 = parse(bytesToHex(buildFrame(0x1200, { phone: '13800138000', seq: 1, version: 1 },
+    new Uint8Array([...i16be(0x0000), ...i16be(0x1402), ...subBody]))));
+  includes('0x1402 WARN_TYPE 报警名', JSON.stringify(res3.bodyFields), '0x0001 - 超速报警');
+  includes('0x1402 报警唯一编码', JSON.stringify(res3.bodyFields), '1710825600');
+}
+
+/* ============================================================
  * 汇总
  * ========================================================== */
 console.log(`\n${'='.repeat(52)}`);

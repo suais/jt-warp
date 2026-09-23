@@ -8,7 +8,8 @@ import {
   TERM_PARAMS, COLOR_LABEL, PLATE_COLOR, VEHICLE_TYPE, VEHICLE_TYPE_809, MEDIA_TYPE, ADAS_ALARM, DSM_ALARM,
   RESULT_CODE, REG_RESULT, UPGRADE_RESULT, UPGRADE_TYPE, S809_LOGIN_RESULT,
   S809_LOGIN_TYPE, S809_ENCRYPT, AREA_TYPE, NET_TYPE, MSG_VERSION,
-  SUBIZ_809, SUBIZ_ALARM_RESULT,
+  SUBIZ_809, SUBIZ_ALARM_RESULT, ALARM_WARN_TYPE,
+  ADAS_ALARM_ACTIVE, DSM_ALARM_ACTIVE, ADAS_ACTIVE_FLAG, ADAS_ACTIVE_LEVEL, ADAS_ACTIVE_DEVIATION, ADAS_ACTIVE_ROADSIGN,
 } from './dict.js';
 
 /* =====================================================================
@@ -1529,8 +1530,69 @@ function parseExtraItem(id, data, def) {
         if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
         return { value: dn(DSM_ALARM, t, 'DSM 报警'), children: kids };
       }
+      case 'adasActive': {
+        // 主动安全 0x64 ADAS（山东团体标准 表4-15）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        const flag = rr.u8();
+        kids.push(f('FLAG', '标志状态', `0x${flag.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_FLAG, flag, '') ? ' - ' + ADAS_ACTIVE_FLAG[flag] : ''}`));
+        const t = rr.u8();
+        kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${t.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ALARM_ACTIVE, t, '') ? ' - ' + ADAS_ALARM_ACTIVE[t] : ''}`));
+        const lv = rr.u8();
+        kids.push(f('ALARM_LEVEL', '报警级别', `0x${lv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_LEVEL, lv, '') ? ' - ' + ADAS_ACTIVE_LEVEL[lv] : ''}`));
+        if (rr.left >= 1) kids.push(f('FRONT_SPEED', '前车车速', `${rr.u8()} km/h`, { hint: '仅前向碰撞/车道偏离有效' }));
+        if (rr.left >= 1) kids.push(f('FRONT_DIST', '前车/行人距离', String(rr.u8()), { hint: '0x10 单位，仅前向碰撞/车道偏离/行人碰撞有效' }));
+        const dv = rr.left >= 1 ? rr.u8() : -1;
+        if (dv >= 0) kids.push(f('DEVIATION', '偏离类型', `0x${dv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_DEVIATION, dv, '') ? ' - ' + ADAS_ACTIVE_DEVIATION[dv] : ''}`, { hint: '仅车道偏离有效' }));
+        const rs = rr.left >= 1 ? rr.u8() : -1;
+        if (rs >= 0) kids.push(f('ROAD_SIGN_TYPE', '道路标志识别类型', `0x${rs.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_ROADSIGN, rs, '') ? ' - ' + ADAS_ACTIVE_ROADSIGN[rs] : ''}`));
+        if (rr.left >= 1) kids.push(f('ROAD_SIGN_DATA', '道路标志识别数据', String(rr.u8())));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
+        return { value: dn(ADAS_ALARM_ACTIVE, t, 'ADAS 报警'), children: kids };
+      }
+      case 'dsmActive': {
+        // 主动安全 0x65 DSM（山东团体标准 表4-17）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        const flag = rr.u8();
+        kids.push(f('FLAG', '标志状态', `0x${flag.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_FLAG, flag, '') ? ' - ' + ADAS_ACTIVE_FLAG[flag] : ''}`));
+        const t = rr.u8();
+        kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${t.toString(16).padStart(2, '0').toUpperCase()}${dn(DSM_ALARM_ACTIVE, t, '') ? ' - ' + DSM_ALARM_ACTIVE[t] : ''}`));
+        const lv = rr.u8();
+        kids.push(f('ALARM_LEVEL', '报警级别', `0x${lv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_LEVEL, lv, '') ? ' - ' + ADAS_ACTIVE_LEVEL[lv] : ''}`));
+        if (rr.left >= 1) kids.push(f('FATIGUE', '疲劳程度', String(rr.u8()), { hint: '1-10，越大越疲劳，仅疲劳驾驶有效' }));
+        if (rr.left >= 4) kids.push(f('RESERVED', '预留', bytesToHex(rr.take(4)), { monospace: true }));
+        if (rr.left >= 1) kids.push(f('SPEED', '车速', `${rr.u8()} km/h`));
+        if (rr.left >= 2) kids.push(f('ALTITUDE', '高程', `${rr.u16()} 米`));
+        if (rr.left >= 4) {
+          const lat = rr.u32(); const lon = rr.u32();
+          kids.push(f('LAT', '纬度', fmtCoord(lat, lon).split('  ')[0]));
+          kids.push(f('LON', '经度', fmtCoord(lon, 0).split('  ')[0]));
+        }
+        if (rr.left >= 6) {
+          const b = rr.take(6);
+          const hx = Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
+          const m = hx.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+          if (m) kids.push(f('TIME', '日期时间', `20${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`, { hint: 'BCD[6] GMT+8' }));
+          else kids.push(f('TIME', '日期时间', hx, { monospace: true }));
+        }
+        if (rr.left >= 2) kids.push(f('VEH_STATE', '车辆状态', `0x${rr.u16().toString(16).padStart(4, '0').toUpperCase()}`, { hint: '按标准表' }));
+        if (rr.left >= 16) kids.push(f('ALARM_MARK', '报警标识号', bytesToHex(rr.take(16)), { monospace: true, hint: '报警识别号' }));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
+        return { value: dn(DSM_ALARM_ACTIVE, t, 'DSM 报警'), children: kids };
+      }
+      case 'bsdActive': {
+        // 主动安全 0x67 BSD（山东团体标准 表4-20，通用解析）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        if (rr.left >= 1) kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${rr.u8().toString(16).padStart(2, '0').toUpperCase()}`));
+        if (rr.left >= 1) kids.push(f('ALARM_LEVEL', '报警级别', `0x${rr.u8().toString(16).padStart(2, '0').toUpperCase()}`));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true, hint: '盲区监测字段按标准表4-20，此处通用展示' }));
+        return { value: 'BSD 报警', children: kids };
+      }
       case 'tpms':
-      case 'tpmsFull': {
+      case 'tpmsFull':
+      case 'tpmsActive': {
         const kids = [];
         const label = ['左前', '右前', '左后', '右后', '左中', '右中', '备胎', '备用2'];
         let i = 0;
@@ -1662,7 +1724,7 @@ const _SUB_PARSERS = {
   0x1402(r, o) {
     o.push(f('PLATFORM_ID', '发起报警平台编码', r.gbkz(11), { hint: '11 字节' }));
     const wt = r.u16();
-    o.push(f('WARN_TYPE', '报警类型', `0x${wt.toString(16).padStart(4, '0').toUpperCase()}`, { hint: '见规范附录' }));
+    o.push(f('WARN_TYPE', '报警类型', `0x${wt.toString(16).padStart(4, '0').toUpperCase()}${dn(ALARM_WARN_TYPE, wt, '') ? ' - ' + ALARM_WARN_TYPE[wt] : ''}`, { hint: '见《规范 V2》附录报警类型明细' }));
     o.push(readTime8(r, 'WARN_TIME', '报警时间'));
     o.push(readTime8(r, 'START_TIME', '事件开始时间'));
     o.push(readTime8(r, 'END_TIME', '事件结束时间'));

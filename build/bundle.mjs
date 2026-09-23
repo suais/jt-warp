@@ -39,7 +39,8 @@ global.JT808 = {
   escape, unescape, xorChecksum, decodeGBK,
   parseHeader, mkField: f,
   scanEmbedded, parseRawBody, findHeadPlate,
-  SUBIZ_809, SUBIZ_ALARM_RESULT,
+  SUBIZ_809, SUBIZ_ALARM_RESULT, ALARM_WARN_TYPE,
+  ADAS_ALARM_ACTIVE, DSM_ALARM_ACTIVE,
 };})(typeof globalThis !== 'undefined' ? globalThis : window);
 `;
 

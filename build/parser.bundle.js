@@ -203,6 +203,51 @@ const SUBIZ_ALARM_RESULT = {
   0x03: '将来处理', 0x04: '误报警',
 };
 
+/* ============ 809 平台间数据交换报警类型（《规范 V2》附录「报警类型明细」） ============ */
+const ALARM_WARN_TYPE = {
+  // 一、位置相关报警
+  0x0001: '超速报警', 0x0002: '疲劳驾驶报警', 0x0003: '紧急报警',
+  0x0004: '进入指定区域报警', 0x0005: '离开指定区域报警', 0x0008: '越界报警',
+  0x0009: '盗警', 0x000A: '劫警', 0x000B: '偏离路线报警', 0x000C: '车辆移动报警',
+  0x000D: '超时驾驶报警', 0x0010: '违规行驶报警', 0x0011: '前撞报警',
+  0x0012: '车道偏离报警', 0x0013: '胎压异常报警', 0x0014: '动态信息异常报警',
+  0x00FF: '其他报警',
+  // 二、非位置相关报警
+  0xA001: '超时停车', 0xA002: '车辆定位信息上报时间间隔异常',
+  0xA003: '车辆定位信息上报距离间隔异常', 0xA004: '下级平台异常断线',
+  0xA005: '下级平台数据传输异常', 0xA006: '路段堵塞报警', 0xA007: '危险路段报警',
+  0xA008: '雨雪天气报警', 0xA009: '驾驶员身份识别异常', 0xA00A: '终端异常(含线路连接异常)',
+  0xA00B: '平台接入异常', 0xA00C: '核心数据异常', 0xA0FF: '其他报警',
+  // 三、视频报警
+  0x0101: '视频信号丢失报警', 0x0102: '视频信号遮挡报警', 0x0103: '存储单元故障报警',
+  0x0104: '其他视频设备故障报警', 0x0105: '客车超员报警', 0x0106: '异常驾驶行为报警',
+  0x0107: '特殊报警录像达到存储阈值报警',
+  // 四、智能监控报警
+  0xD201: '超速报警', 0xD202: '长时间不目视前方报警', 0xD203: '抽烟报警',
+  0xD204: '接打手持电话报警', 0xD205: '驾驶员不在驾驶位置报警',
+  0xD206: '双手同时脱离方向盘报警', 0xD207: '驾驶员身份异常报警',
+  0xD208: '禁行时段行车报警', 0xD209: '未系安全带报警', 0xD210: '红外阻断型墨镜失效报警',
+  0xD211: '玩手机报警', 0xD212: '夜间行驶报警', 0xD213: '生理疲劳驾驶报警',
+  0xD214: '分心驾驶报警', 0xD215: '偏离驾驶位报警', 0xD216: '频繁变道报警',
+  0xD217: '驾驶员变更报警', 0xD218: '长期异地经营报警', 0xD219: '离线位移报警',
+  0xD220: '实线变道', 0xD221: '道路实际限速超速报警', 0xD222: '基础限速超速报警',
+  0xD223: '不规范变道提醒', 0xD301: '驾驶辅助功能失效报警', 0xD302: '驾驶员行为监测功能失效报警',
+  0xD303: '终端故障报警', 0xD304: '三天未上线报警', 0xD305: '断电报警',
+  0xD306: '天线断开报警', 0xD307: '设备失效报警', 0xD308: '关闭终端报警',
+  0xD401: '前向碰撞预警', 0xD402: '行人碰撞报警', 0xD403: '急加速报警',
+  0xD404: '急减速报警', 0xD405: '急转弯报警', 0xD406: '碰撞预警', 0xD407: '侧翻预警',
+  0xD408: '车道偏离报警', 0xD409: '后方接近报警', 0xD410: '左侧后方接近报警',
+  0xD411: '右侧后方接近报警', 0xD412: '右侧前方接近报警', 0xD413: '怠速报警',
+  0xD414: '异常熄火报警', 0xD415: '空挡滑行报警', 0xD416: '发动机超转报警',
+  0xD417: '超时停车报警', 0xD418: '进出路线报警', 0xD419: '路段行驶时间不足报警',
+  0xD420: '路段行驶时间过长报警', 0xD421: '车辆非法点火报警', 0xD422: '车辆非法位移报警',
+  0xD423: '车距过近报警', 0xD424: '电子围栏报警', 0xD425: '障碍物报警',
+  0xD426: '道路标识超限报警', 0xD427: '事故报警',
+  0xD501: '胎压过高报警', 0xD502: '胎压过低报警', 0xD503: '轮胎温度过高报警',
+  0xD504: '传感器异常报警', 0xD505: '胎压不平衡报警', 0xD506: '慢漏气报警',
+  0xD507: '电池电压低报警', 0xD508: '电瓶欠压报警',
+};
+
 /* =================== 省份/城市区划（交通行业常用） =================== */
 const PROVINCES = {
   11: '北京市', 12: '天津市', 13: '河北省', 14: '山西省', 15: '内蒙古自治区',
@@ -311,8 +356,11 @@ const LOCATION_EXTRAS = {
   0x40: { name: '车辆休眠状态', unit: '', type: 'u8' },
   0x51: { name: '苏标多媒体信息附加项', unit: '', type: 'suMedia' },
   0x63: { name: '中交兴路自定义', unit: '', type: 'u32' },
-  0x64: { name: '中交兴路自定义', unit: '', type: 'u32' },
-  0x65: { name: '中交兴路自定义', unit: '', type: 'u16' },
+  /* 主动安全（苏标/山东团体标准）：0x0200 位置汇报新增报警附加项 */
+  0x64: { name: '高级驾驶辅助系统(ADAS)报警', unit: '', type: 'adasActive' },
+  0x65: { name: '驾驶员状态监测(DSM)报警', unit: '', type: 'dsmActive' },
+  0x66: { name: '胎压监测(TPMS)报警', unit: '', type: 'tpmsActive' },
+  0x67: { name: '盲区监测(BSD)报警', unit: '', type: 'bsdActive' },
   0xE0: { name: '自定义扩展', unit: '', type: 'raw' },
   0xFF: { name: '自定义扩展', unit: '', type: 'raw' },
 };
@@ -518,6 +566,23 @@ const DSM_ALARM = {
   0x0B: '红外阻挡', 0x0C: '疲劳驾驶(累计)', 0x0D: '疑似疲劳',
   0x0E: '饮水', 0x0F: '吃东西', 0x10: '左顾右盼',
 };
+
+/* ========== 主动安全（山东团体标准/苏标）ADAS(0x64) 与 DSM(0x65) 报警类型 ========== */
+const ADAS_ALARM_ACTIVE = {
+  0x01: '前向碰撞报警', 0x02: '车道偏离报警', 0x03: '车距过近报警', 0x04: '行人碰撞报警',
+  0x06: '道路标识超限报警', 0x07: '障碍物报警',
+  0x10: '道路标志识别事件', 0x11: '主动抓拍事件',
+};
+const DSM_ALARM_ACTIVE = {
+  0x01: '疲劳驾驶报警', 0x02: '接打电话报警', 0x03: '抽烟报警', 0x04: '分神驾驶报警',
+  0x05: '驾驶员异常报警', 0x06: '双手同时脱离方向盘报警',
+  0x07: '驾驶员行为监测功能失效报警', 0x08: '未系安全带报警',
+  0x10: '自动抓拍事件', 0x11: '驾驶员变更事件',
+};
+const ADAS_ACTIVE_FLAG = { 0x01: '开始', 0x02: '结束' };
+const ADAS_ACTIVE_LEVEL = { 0x01: '一级报警(1张图片)', 0x02: '二级报警(1张图片+10秒视频)' };
+const ADAS_ACTIVE_DEVIATION = { 0x01: '左侧偏离', 0x02: '右侧偏离' };
+const ADAS_ACTIVE_ROADSIGN = { 0x01: '限速标志', 0x02: '限高标志', 0x03: '限重标志' };
 
 const OVERSpeed_TYPE = {
   0: '无特定位置信息', 1: '圆形区域', 2: '矩形区域', 3: '多边形区域', 4: '路段',
@@ -2109,8 +2174,69 @@ function parseExtraItem(id, data, def) {
         if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
         return { value: dn(DSM_ALARM, t, 'DSM 报警'), children: kids };
       }
+      case 'adasActive': {
+        // 主动安全 0x64 ADAS（山东团体标准 表4-15）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        const flag = rr.u8();
+        kids.push(f('FLAG', '标志状态', `0x${flag.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_FLAG, flag, '') ? ' - ' + ADAS_ACTIVE_FLAG[flag] : ''}`));
+        const t = rr.u8();
+        kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${t.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ALARM_ACTIVE, t, '') ? ' - ' + ADAS_ALARM_ACTIVE[t] : ''}`));
+        const lv = rr.u8();
+        kids.push(f('ALARM_LEVEL', '报警级别', `0x${lv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_LEVEL, lv, '') ? ' - ' + ADAS_ACTIVE_LEVEL[lv] : ''}`));
+        if (rr.left >= 1) kids.push(f('FRONT_SPEED', '前车车速', `${rr.u8()} km/h`, { hint: '仅前向碰撞/车道偏离有效' }));
+        if (rr.left >= 1) kids.push(f('FRONT_DIST', '前车/行人距离', String(rr.u8()), { hint: '0x10 单位，仅前向碰撞/车道偏离/行人碰撞有效' }));
+        const dv = rr.left >= 1 ? rr.u8() : -1;
+        if (dv >= 0) kids.push(f('DEVIATION', '偏离类型', `0x${dv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_DEVIATION, dv, '') ? ' - ' + ADAS_ACTIVE_DEVIATION[dv] : ''}`, { hint: '仅车道偏离有效' }));
+        const rs = rr.left >= 1 ? rr.u8() : -1;
+        if (rs >= 0) kids.push(f('ROAD_SIGN_TYPE', '道路标志识别类型', `0x${rs.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_ROADSIGN, rs, '') ? ' - ' + ADAS_ACTIVE_ROADSIGN[rs] : ''}`));
+        if (rr.left >= 1) kids.push(f('ROAD_SIGN_DATA', '道路标志识别数据', String(rr.u8())));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
+        return { value: dn(ADAS_ALARM_ACTIVE, t, 'ADAS 报警'), children: kids };
+      }
+      case 'dsmActive': {
+        // 主动安全 0x65 DSM（山东团体标准 表4-17）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        const flag = rr.u8();
+        kids.push(f('FLAG', '标志状态', `0x${flag.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_FLAG, flag, '') ? ' - ' + ADAS_ACTIVE_FLAG[flag] : ''}`));
+        const t = rr.u8();
+        kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${t.toString(16).padStart(2, '0').toUpperCase()}${dn(DSM_ALARM_ACTIVE, t, '') ? ' - ' + DSM_ALARM_ACTIVE[t] : ''}`));
+        const lv = rr.u8();
+        kids.push(f('ALARM_LEVEL', '报警级别', `0x${lv.toString(16).padStart(2, '0').toUpperCase()}${dn(ADAS_ACTIVE_LEVEL, lv, '') ? ' - ' + ADAS_ACTIVE_LEVEL[lv] : ''}`));
+        if (rr.left >= 1) kids.push(f('FATIGUE', '疲劳程度', String(rr.u8()), { hint: '1-10，越大越疲劳，仅疲劳驾驶有效' }));
+        if (rr.left >= 4) kids.push(f('RESERVED', '预留', bytesToHex(rr.take(4)), { monospace: true }));
+        if (rr.left >= 1) kids.push(f('SPEED', '车速', `${rr.u8()} km/h`));
+        if (rr.left >= 2) kids.push(f('ALTITUDE', '高程', `${rr.u16()} 米`));
+        if (rr.left >= 4) {
+          const lat = rr.u32(); const lon = rr.u32();
+          kids.push(f('LAT', '纬度', fmtCoord(lat, lon).split('  ')[0]));
+          kids.push(f('LON', '经度', fmtCoord(lon, 0).split('  ')[0]));
+        }
+        if (rr.left >= 6) {
+          const b = rr.take(6);
+          const hx = Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
+          const m = hx.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+          if (m) kids.push(f('TIME', '日期时间', `20${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`, { hint: 'BCD[6] GMT+8' }));
+          else kids.push(f('TIME', '日期时间', hx, { monospace: true }));
+        }
+        if (rr.left >= 2) kids.push(f('VEH_STATE', '车辆状态', `0x${rr.u16().toString(16).padStart(4, '0').toUpperCase()}`, { hint: '按标准表' }));
+        if (rr.left >= 16) kids.push(f('ALARM_MARK', '报警标识号', bytesToHex(rr.take(16)), { monospace: true, hint: '报警识别号' }));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true }));
+        return { value: dn(DSM_ALARM_ACTIVE, t, 'DSM 报警'), children: kids };
+      }
+      case 'bsdActive': {
+        // 主动安全 0x67 BSD（山东团体标准 表4-20，通用解析）
+        const kids = [f('ALARM_ID', '报警 ID', String(rr.u32()))];
+        if (rr.left >= 1) kids.push(f('ALARM_TYPE', '报警/事件类型', `0x${rr.u8().toString(16).padStart(2, '0').toUpperCase()}`));
+        if (rr.left >= 1) kids.push(f('ALARM_LEVEL', '报警级别', `0x${rr.u8().toString(16).padStart(2, '0').toUpperCase()}`));
+        const extra = rr.rest();
+        if (extra.length) kids.push(f('EXTRA', '扩展数据', bytesToHex(extra), { monospace: true, hint: '盲区监测字段按标准表4-20，此处通用展示' }));
+        return { value: 'BSD 报警', children: kids };
+      }
       case 'tpms':
-      case 'tpmsFull': {
+      case 'tpmsFull':
+      case 'tpmsActive': {
         const kids = [];
         const label = ['左前', '右前', '左后', '右后', '左中', '右中', '备胎', '备用2'];
         let i = 0;
@@ -2242,7 +2368,7 @@ const _SUB_PARSERS = {
   0x1402(r, o) {
     o.push(f('PLATFORM_ID', '发起报警平台编码', r.gbkz(11), { hint: '11 字节' }));
     const wt = r.u16();
-    o.push(f('WARN_TYPE', '报警类型', `0x${wt.toString(16).padStart(4, '0').toUpperCase()}`, { hint: '见规范附录' }));
+    o.push(f('WARN_TYPE', '报警类型', `0x${wt.toString(16).padStart(4, '0').toUpperCase()}${dn(ALARM_WARN_TYPE, wt, '') ? ' - ' + ALARM_WARN_TYPE[wt] : ''}`, { hint: '见《规范 V2》附录报警类型明细' }));
     o.push(readTime8(r, 'WARN_TIME', '报警时间'));
     o.push(readTime8(r, 'START_TIME', '事件开始时间'));
     o.push(readTime8(r, 'END_TIME', '事件结束时间'));
@@ -3075,5 +3201,6 @@ global.JT808 = {
   escape, unescape, xorChecksum, decodeGBK,
   parseHeader, mkField: f,
   scanEmbedded, parseRawBody, findHeadPlate,
-  SUBIZ_809, SUBIZ_ALARM_RESULT,
+  SUBIZ_809, SUBIZ_ALARM_RESULT, ALARM_WARN_TYPE,
+  ADAS_ALARM_ACTIVE, DSM_ALARM_ACTIVE,
 };})(typeof globalThis !== 'undefined' ? globalThis : window);
