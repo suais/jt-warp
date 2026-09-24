@@ -12,3 +12,6 @@ Thumbs.db
 # 临时产物
 .tmp/
 docs/_shots/
+
+.vercel
+.vercel/
