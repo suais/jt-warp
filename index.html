@@ -280,7 +280,6 @@ footer .row{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
       <button id="tab-build" role="tab" aria-selected="false">构造</button>
       <button id="tab-dict" role="tab" aria-selected="false">字典</button>
     </div>
-    <span class="badge" id="net-badge">离线可用</span>
     <a class="btn sm" href="https://4m44trmsyvh9v.doubaoapps.com/app/app_17eq0ye30ks" target="_blank" rel="noopener">协议文档</a>
   </div>
 </header>
@@ -401,7 +400,7 @@ footer .row{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 
 <footer>
   <div class="row">
-    <span>JT/T 808-2011 / 2013 / 2019 · JT/T 809-2011 · 纯前端解析，报文不上传</span>
+    <span>JT/T 808-2011 / 2013 / 2019 · JT/T 809-2011</span>
     <span>字段释义依据交通运输部标准附录整理，各地扩展项以厂商实现为准</span>
   </div>
 </footer>
@@ -1079,13 +1078,6 @@ try{
   $('#input-meta').textContent = countBytes($('#hex').value) + ' 字节';
   doParse();
 }catch(e){}
-
-/* 网络状态 */
-(function(){
-  var b=$('#net-badge');
-  function upd(){ b.textContent = navigator.onLine ? '离线可用' : '离线模式'; }
-  window.addEventListener('online', upd); window.addEventListener('offline', upd); upd();
-})();
 
 })();
 </script>

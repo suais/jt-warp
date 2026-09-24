@@ -61,7 +61,7 @@ const neededIds = [
   'view-parse', 'view-build', 'view-dict',
   'b-msgid', 'b-phone', 'b-seq', 'b-ver', 'b-enc', 'b-body',
   'b-gen', 'b-out', 'b-tpl-loc', 'b-tpl-reg', 'b-tpl-resp', 'b-parse-it',
-  'dict-q', 'dict-kind', 'dict-body', 'net-badge',
+  'dict-q', 'dict-kind', 'dict-body',
 ];
 const missingIds = neededIds.filter((id) => !html.includes(`id="${id}"`));
 ok('所有必需元素 ID 存在', missingIds.length === 0, missingIds.length ? `缺失: ${missingIds.join(', ')}` : `(${neededIds.length} 个)`);
